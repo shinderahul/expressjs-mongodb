@@ -1,7 +1,9 @@
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/database");
-const todoRoutes = require("./routes/todoRoutes");
+const todoRoutes = require("./routes/todo");
+const authRoutes = require("./routes/auth");
+require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,6 +15,9 @@ app.use(cors());
 
 // Connect to MongoDB
 connectDB();
+
+// Auth Routes
+app.use("/auth", authRoutes);
 
 // Post /todos - Add a new todo
 app.use("/api", todoRoutes);
