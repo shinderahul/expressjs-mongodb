@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const rateLimit = require("express-rate-limit");
 
 // protect routes - verify JWT token
 const protect = async (req, res, next) => {
@@ -24,7 +25,6 @@ const protect = async (req, res, next) => {
 
     // verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("decoded", decoded);
 
     // Get user from token
     const currentUser = await User.findById(decoded.id);
@@ -60,7 +60,18 @@ const restrictTo = (...roles) => {
   };
 };
 
+// Login rate limiting middleware
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes,
+  max: 5,
+  message: {
+    success: false,
+    message: "Too many login attempts from this IP, please try again later.",
+  },
+});
+
 module.exports = {
   protect,
   restrictTo,
+  loginLimiter,
 };

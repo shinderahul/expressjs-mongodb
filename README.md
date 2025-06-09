@@ -11,6 +11,7 @@ A complete authentication system built with Express.js, MongoDB, and JWT tokens.
 - Role-based access control
 - MongoDB integration with Mongoose
 - CRUD Operation
+- Rate Limiting
 
 ## Quick Start
 

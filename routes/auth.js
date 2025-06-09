@@ -1,5 +1,5 @@
 const express = require("express");
-const { protect, restrictTo } = require("../middleware/auth");
+const { protect, restrictTo, loginLimiter } = require("../middleware/auth");
 const {
   registerUser,
   loginUser,
@@ -20,7 +20,7 @@ router.post("/register", registerUser);
 // @desc    Login user
 // @route   POST /api/auth/login
 // @access  Public
-router.post("/login", loginUser);
+router.post("/login", loginLimiter, loginUser);
 
 // @desc    Get current logged in user
 // @route   GET /api/auth/me
