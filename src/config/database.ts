@@ -1,6 +1,6 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
-const connectDB = async () => {
+const connectDB = async (): Promise<void> => {
   try {
     const MONGODB_URI =
       process.env.MONGODB_URI || "mongodb://localhost:27017/todoList";
@@ -12,4 +12,4 @@ const connectDB = async () => {
   }
 };
 
-module.exports = connectDB;
+export default connectDB;

@@ -1,11 +1,14 @@
-const express = require("express");
-const cors = require("cors");
-const connectDB = require("./config/database");
-const todoRoutes = require("./routes/todo");
-const authRoutes = require("./routes/auth");
-require("dotenv").config();
+import express, { Application } from "express";
+import cors from "cors";
+import connectDB from "./config/database";
+import todoRoutes from "./routes/todo";
+import authRoutes from "./routes/auth";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
 
-const app = express();
+dotenv.config();
+
+const app: Application = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
@@ -19,18 +22,19 @@ connectDB();
 // Auth Routes
 app.use("/auth", authRoutes);
 
-// Post /todos - Add a new todo
+// Todo Routes
 app.use("/api", todoRoutes);
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
 process.on("SIGTERM", async () => {
   console.log("SIGTERM signal received: closing HTTP server");
-  const mongoose = require("mongoose");
   await mongoose.connection.close();
-  process.exit(0);
+  server.close(() => {
+    process.exit(0);
+  });
 });
 
-module.exports = app;
+export default app;

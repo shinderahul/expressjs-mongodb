@@ -1,23 +1,24 @@
-const express = require("express");
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
-const { protect, restrictTo } = require("../middleware/auth");
-
-const router = express.Router();
+import { Request, Response } from "express";
+import jwt from "jsonwebtoken";
+import User, { IUser } from "../models/User";
 
 // Generate JWT token
-const signToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE,
-  });
+const signToken = (id: string) => {
+  const secret = process.env.JWT_SECRET;
+  const expiresIn = process.env.JWT_EXPIRE;
+
+  if (!secret) throw new Error("JWT_SECRET is not defined");
+  if (!expiresIn) throw new Error("JWT_EXPIRE is not defined");
+
+  return (jwt as any).sign({ id }, secret, { expiresIn }); // any will fix later
 };
 
 // Send token response
-const createSendToken = (user, statusCode, res) => {
-  token = signToken(user._id);
+const createSendToken = (user: any, statusCode: number, res: Response) => {
+  const token = signToken(user._id.toString()); // Any will fix later
 
   // Remove password from user object
-  user.password = undefined;
+  user.password = undefined as any;
 
   res.status(statusCode).json({
     success: true,
@@ -29,10 +30,9 @@ const createSendToken = (user, statusCode, res) => {
 };
 
 // @desc            Register a new user
-// @contoller       POST /auth/register
+// @controller      POST /auth/register
 // @access          Public
-
-const registerUser = async (req, res) => {
+export const registerUser = async (req: any, res: any) => {
   try {
     const { name, email, password } = req.body;
 
@@ -54,7 +54,7 @@ const registerUser = async (req, res) => {
     });
 
     createSendToken(user, 201, res);
-  } catch (error) {
+  } catch (error: any) {
     res.status(400).json({
       success: false,
       message: "Error registering user: " + error.message,
@@ -65,11 +65,11 @@ const registerUser = async (req, res) => {
 // @desc        Login user
 // @controller  POST /auth/login
 // @access      Public
-const loginUser = async (req, res) => {
+export const loginUser = async (req: any, res: any) => {
   try {
     const { email, password } = req.body;
 
-    // Check if email and password exits
+    // Check if email and password exist
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -78,7 +78,9 @@ const loginUser = async (req, res) => {
     }
 
     // Check if user exists and password is correct
-    const user = await User.findOne({ email }).select("+password");
+    const user = (await User.findOne({ email }).select(
+      "+password"
+    )) as IUser | null;
 
     if (!user || !(await user.correctPassword(password, user.password))) {
       return res.status(401).json({
@@ -88,11 +90,11 @@ const loginUser = async (req, res) => {
     }
 
     // update last login time
-    user.lastLogin = Date.now();
+    user.lastLogin = new Date();
     await user.save({ validateBeforeSave: false });
 
     createSendToken(user, 200, res);
-  } catch (error) {
+  } catch (error: any) {
     res.status(400).json({
       success: false,
       message: `Error logging in: ${error.message}`,
@@ -103,15 +105,16 @@ const loginUser = async (req, res) => {
 // @desc        Get current logged in user
 // @controller  GET /auth/me
 // @access      Private
-const getUserProfile = async (req, res) => {
+export const getUserProfile = async (req: any, res: any) => {
   try {
+    // @ts-ignore
     res.status(200).json({
       success: true,
       data: {
-        user: req.user,
+        user: (req as any).user, // Will fix it later
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     res.status(400).json({
       success: false,
       message: error.message,
@@ -122,16 +125,17 @@ const getUserProfile = async (req, res) => {
 // @desc        Update user details
 // @controller  PUT /auth/updatedetails
 // @access      Private
-const updateUserDetails = async (req, res) => {
+export const updateUserDetails = async (req: any, res: any) => {
   try {
     const { name, email } = req.body;
 
     // Update user details
-    const fieldsToUpdate = {
+    const fieldsToUpdate: Partial<IUser> = {
       name,
       email,
     };
 
+    // @ts-ignore
     const user = await User.findByIdAndUpdate(req.user.id, fieldsToUpdate, {
       new: true,
       runValidators: true,
@@ -143,7 +147,7 @@ const updateUserDetails = async (req, res) => {
         user,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     res.status(400).json({
       success: false,
       message: error.message,
@@ -154,9 +158,19 @@ const updateUserDetails = async (req, res) => {
 // @desc        Update password
 // @controller  PUT /auth/updatepassword
 // @access      Private
-const updateUserPassword = async (req, res) => {
+export const updateUserPassword = async (req: any, res: any) => {
   try {
-    const user = await User.findById(req.user.id).select("+password");
+    // @ts-ignore
+    const user = (await User.findById(req.user.id).select(
+      "+password"
+    )) as IUser | null;
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
 
     // Check if current password is correct
     if (
@@ -173,7 +187,7 @@ const updateUserPassword = async (req, res) => {
     await user.save();
 
     createSendToken(user, 200, res);
-  } catch (error) {
+  } catch (error: any) {
     res.status(400).json({
       success: false,
       message: error.message,
@@ -184,11 +198,10 @@ const updateUserPassword = async (req, res) => {
 // @desc    Register admin user (protected route - only existing admins can create new admins)
 // @controller   POST /auth/register-admin
 // @access  Private/Admin
-const registerAdmin = async (req, res) => {
+export const registerAdmin = async (req: any, res: any) => {
   try {
     const { name, email, password } = req.body;
-    console.log("registerAdmin called", name);
-    // Check if user already exists
+    // Check if admin already exists
     const existingUser = await User.findOne({ role: "admin" });
     if (existingUser) {
       return res.status(400).json({
@@ -205,7 +218,7 @@ const registerAdmin = async (req, res) => {
       role: "admin",
     });
     createSendToken(user, 201, res);
-  } catch (error) {
+  } catch (error: any) {
     res.status(400).json({
       success: false,
       message: error.message,
@@ -216,7 +229,7 @@ const registerAdmin = async (req, res) => {
 // @desc        Get all users (Admin only)
 // @controller  GET /auth/users
 // @access      Private/Admin
-const getAllUsers = async (req, res) => {
+export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const users = await User.find().select("-password");
 
@@ -227,20 +240,10 @@ const getAllUsers = async (req, res) => {
         users,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     res.status(400).json({
       success: false,
       message: error.message,
     });
   }
-};
-
-module.exports = {
-  registerUser,
-  loginUser,
-  getUserProfile,
-  updateUserDetails,
-  updateUserPassword,
-  registerAdmin,
-  getAllUsers,
 };

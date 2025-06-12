@@ -1,6 +1,6 @@
-const express = require("express");
-const { protect, restrictTo, loginLimiter } = require("../middleware/auth");
-const {
+import express from "express";
+import { protect, restrictTo, loginLimiter } from "../middleware/auth";
+import {
   registerUser,
   loginUser,
   getUserProfile,
@@ -8,7 +8,7 @@ const {
   updateUserPassword,
   registerAdmin,
   getAllUsers,
-} = require("../controller/auth");
+} from "../controller/auth";
 
 const router = express.Router();
 
@@ -40,17 +40,11 @@ router.put("/updatepassword", protect, updateUserPassword);
 // @desc    Register admin user (protected route - only existing admins can create new admins)
 // @route   POST /api/auth/register-admin
 // @access  Private/Admin
-router.post("/register-admin", registerAdmin);
-
-// Recommended Approach for creating Admin Users:
-// 1. For the first admin: Use method #1 (direct database update) or method #3 (super admin with secret)
-// 2. For subsequent admins: Use method #2 (admin-only registration endpoint)
-// 3. For promoting users: Use method #5 (promote endpoint)
-// Note: The most secure approach is to create the first admin manually in the database, then use protected endpoints for creating additional admins.RetryClaude does not have the ability to run the code it generates yet.Claude can make mistakes. Please double-check responses.
+router.post("/register-admin", protect, restrictTo("admin"), registerAdmin);
 
 // @desc    Get all users (Admin only)
 // @route   GET /api/auth/users
 // @access  Private/Admin
 router.get("/users", protect, restrictTo("admin"), getAllUsers);
 
-module.exports = router;
+export default router;

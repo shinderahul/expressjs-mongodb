@@ -1,7 +1,20 @@
-const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
+import mongoose, { Document, Model, Schema, Types } from "mongoose";
+import bcrypt from "bcryptjs";
 
-const userSchema = new mongoose.Schema({
+export interface IUser extends Document {
+  name: string;
+  email: string;
+  password: string;
+  role: "user" | "admin";
+  createdAt: Date;
+  lastLogin?: Date;
+  correctPassword(
+    candidatePassword: string,
+    userPassword: string
+  ): Promise<boolean>;
+}
+
+const userSchema = new Schema<IUser>({
   name: {
     type: String,
     required: [true, "Please provide a name"],
@@ -23,7 +36,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, "Please provide a password"],
     minLength: [6, "Password must be at least 6 characters long"],
-    select: false, // Exclude password from queries by default
+    select: false,
   },
   role: {
     type: String,
@@ -40,7 +53,7 @@ const userSchema = new mongoose.Schema({
 });
 
 // Hash password before saving
-userSchema.pre("save", async function (next) {
+userSchema.pre<IUser>("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
@@ -48,10 +61,11 @@ userSchema.pre("save", async function (next) {
 
 // Instance method to check password
 userSchema.methods.correctPassword = async function (
-  candidatePassword,
-  userPassword
-) {
+  candidatePassword: string,
+  userPassword: string
+): Promise<boolean> {
   return await bcrypt.compare(candidatePassword, userPassword);
 };
 
-module.exports = mongoose.model("User", userSchema);
+const User: Model<IUser> = mongoose.model<IUser>("User", userSchema);
+export default User;

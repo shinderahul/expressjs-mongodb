@@ -1,12 +1,12 @@
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
-const rateLimit = require("express-rate-limit");
+import { Request, Response, NextFunction } from "express";
+import jwt, { JwtPayload } from "jsonwebtoken";
+import User, { IUser } from "../models/User";
+import rateLimit from "express-rate-limit";
 
 // protect routes - verify JWT token
-const protect = async (req, res, next) => {
+export const protect = async (req: any, res: any, next: NextFunction) => {
   try {
-    // got token from header
-    let token;
+    let token: string | undefined;
 
     if (
       req.headers.authorization &&
@@ -15,18 +15,18 @@ const protect = async (req, res, next) => {
       token = req.headers.authorization.split(" ")[1];
     }
 
-    // Check if token exists
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Acecss denied, No token provided",
+        message: "Access denied, No token provided",
       });
     }
 
-    // verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET as string
+    ) as JwtPayload & { id: string };
 
-    // Get user from token
     const currentUser = await User.findById(decoded.id);
     if (!currentUser) {
       return res.status(401).json({
@@ -35,8 +35,8 @@ const protect = async (req, res, next) => {
       });
     }
 
-    // Grant access to protected route
-    req.user = currentUser;
+    // Attach user to request
+    (req as any).user = currentUser;
     next();
   } catch (error) {
     return res.status(401).json({
@@ -47,31 +47,25 @@ const protect = async (req, res, next) => {
 };
 
 // Restrict to specific roles
-const restrictTo = (...roles) => {
-  return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+export const restrictTo = (...roles: string[]) => {
+  return (req: any, res: any, next: NextFunction) => {
+    const user = (req as any).user as IUser;
+    if (!user || !roles.includes(user.role)) {
       return res.status(403).json({
         success: false,
         message: "You do not have permission to perform this action",
       });
     }
-
     next();
   };
 };
 
 // Login rate limiting middleware
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes,
+export const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5,
   message: {
     success: false,
     message: "Too many login attempts from this IP, please try again later.",
   },
 });
-
-module.exports = {
-  protect,
-  restrictTo,
-  loginLimiter,
-};
